@@ -1,0 +1,56 @@
+project-3-urkeshc/
+├── .gitignore            - Specifies ignored files for version control
+├── README.md             - Project overview and setup instructions
+│
+├── documentation/        - Technical documentation and planning
+│   ├── report.ipynb      - Jupyter notebook report
+│   ├── report.pdf        - Exported PDF report
+│   ├── gameplan.txt      - Initial project planning notes
+│   └── project_structure.txt (this file)
+│
+└── proj3/                - Core Go project directory
+    ├── cmd/              - CLI entry points
+    │   ├── bench/        - Benchmarking utilities
+    │   │   └── main.go   - Benchmark runner implementation
+    │   ├── finder/       - Image search implementation
+    │   │   └── main.go   - Search command entry point
+    │   └── ranker/       - Ranking subsystem
+    │       └── main.go   - Ranking logic entry point
+    │
+    ├── data/             - Dataset and processed files
+    │   ├── cache/        - Cached computations
+    │   ├── images/       - Image samples (from Unsplash)
+    │   ├── metadata/     - Processed image metadata
+    │   └── metadata_big.jsonl - Raw Unsplash metadata (2.6GB)
+    │
+    ├── internal/         - Core application logic
+    │   ├── meta/         - Metadata processing
+    │   │   ├── filter.go - Metadata filtering logic
+    │   │   └── loader.go - Metadata loading utilities
+    │   │
+    │   ├── parallel/     - Parallelization implementations
+    │   │   ├── bsp/      - Bulk Synchronous Parallel approach
+    │   │   ├── pipeline/ - Pipeline parallel processing
+    │   │   └── ws/       - Work-stealing scheduler
+    │   │
+    │   ├── query/        - Query parsing and processing
+    │   ├── textmatch/    - Text scoring logic
+    │   │   └── data/     - Synonym/embedding data files (GloVe neighbors dataset)
+    │   └── util/         - Shared utilities
+    │
+    ├── plots/            - Generated performance charts
+    ├── results/          - Benchmark results (CSV format)
+    │
+    ├── scripts/          - Helper scripts and utilities
+    │   ├── dup/          - Deduplication utilities
+    │   ├── plot_speedup.py - Speedup visualization script
+    │   └── run_all.sh    - Batch experiment runner
+    │
+    ├── go.mod            - Go module dependencies
+    └── go.sum            - Go dependency checksums
+
+Key Implementation Notes:
+- Parallelization strategies are in internal/parallel/ (BSP, Pipeline, Work-Stealing)
+- The text matching system uses precomputed GloVe embeddings in textmatch/data/
+- Unsplash dataset is stored in data/ with processed metadata in metadata/
+- Benchmarking infrastructure allows comparing different parallel approaches

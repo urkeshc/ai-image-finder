@@ -1,0 +1,42 @@
+proj3/data/metadata_big.jsonl
+proj3/data/
+
+# If you prefer the allow list template instead of the deny list, see community template:
+# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
+#
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+
+# Unsplash dataset large files
+# proj3/data/unsplash-research-dataset-lite-latest/collections.csv000
+# proj3/data/unsplash-research-dataset-lite-latest/conversions.csv000
+# proj3/data/unsplash-research-dataset-lite-latest/keywords.csv000
+# proj3/data/unsplash-research-dataset-lite-latest/photos.csv000
+# proj3/data/unsplash-research-dataset-lite-latest/colors.csv000
+proj3/data/unsplash-research-dataset-lite-latest/ 
+# Ignore the entire directory
+
+# Generated data directories
+proj3/data/images/
+proj3/data/metadata/
+proj3/data/metadata_big.jsonl # Ignore the large synthetic metadata file
+
+# If you have other large .csv files in that directory, you might generalize:
+# proj3/data/unsplash-research-dataset-lite-latest/*.csv000
+proj3/data/cache

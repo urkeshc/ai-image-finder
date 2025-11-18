@@ -1,0 +1,26 @@
+[X] Step 1: Scaffold repo – create project-3-urkeshc/ with .gitignore, README.md, documentation/, and empty proj3/ subfolders
+[X] Step 2: Prepare sample data – copy 100 images and their JSON metadata from data/unsplash-research-dataset-lite-latest/ into proj3/data/{images,metadata}
+
+[X] Step 3: Query parser - extract structured fields from free-form input via OpenAI
+[X] Step 4: Metadata loader / filter - read side-car JSON and apply the Query
+[X] Step 5: Text match scorer & CLI - rank results and show them  
+
+[X] Step 6: Flags & utils – factor out flag parsing, timers, and simple progress logging into internal/util
+
+[X] Step 7: Parallel v1 (BSP) – in internal/parallel/bsp, implement a barrier and run map→barrier→reduce across T chunks
+[X] Step 8: Parallel v2 (Pipeline) – in internal/parallel/pipeline, connect filter and scoring stages via buffered channels with T workers
+[X] Step 9: Parallel v3 (Work-stealing) – in internal/parallel/ws, build a Chase-Lev deque so idle threads steal scoring tasks
+
+[X] Step 10: Benchmark & scripts – create cmd/bench for all modes×threads, plus scripts/run_all.sh and scripts/plot_speedup.py
+[X] Step 11: Tests & lint – write unit tests for meta and textmatch; run go vet and golangci-lint until clean
+
+[ ] Step 12: Documentation & report – update documentation/run.txt and gameplan.txt; draft documentation/report.pdf with design and sample speedups
+[ ] Step 13: Final check & submit – verify end-to-end (go run ./proj3/cmd/finder --mode ws --threads 4), tag v1.0, push repo
+
+
+
+
+
+
+
+
