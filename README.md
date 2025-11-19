@@ -148,10 +148,12 @@ Detailed instructions live in `./documentation/run.txt`. High-level steps:
 ## 🚀 Future Directions
 
 While this version uses metadata + AI descriptions as a proxy for visual understanding, the design intentionally isolates the scoring kernel so it can be replaced by a real vision model:
+
     - Swap the token-overlap scorer for a multimodal model (e.g. “Does this image match the user’s description?” per image).
     - Reuse the same parallel runtime (BSP, pipeline, work-stealing) to keep latencies reasonable, even when each image requires a heavy CV inference.
     - Extend filters to integrate EXIF data, face recognition, and richer contextual cues.
 
 This codebase is therefore both:
+
     - A practical prototype for AI-assisted photo search, and
     - A parallel systems case study in designing and benchmarking concurrent architectures on realistic, data-heavy workloads.
