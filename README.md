@@ -1,201 +1,157 @@
-[![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-2e0aaae1b6195c2367325f4f02e2d04e9abb55f0b24a779b69b11b9e10269abc.svg)](https://classroom.github.com/online_ide?assignment_repo_id=19524576&assignment_repo_type=AssignmentRepo)
-# Project \#3: Your Choice!
+# AI Image Finder (Parallel Image Search Engine)
 
-**See gradescope for due date**
+This project is an **AI-powered image finder** that lets you search your photo library using **natural language** (e.g. *“the mountain-top photos I took on my 2021 holiday in Switzerland”*), instead of simple keyword tags.
 
-## Assignment
+It was developed as the final project for **MPCS 52060 – Parallel Programming** at UChicago, with a strong focus on **parallel architectures, scalability, and performance engineering**.
 
-The final project gives you the opportunity to show me what you learned
-in this course and to build your own parallel system. In particular, you
-should think about implementing a parallel system in the domain you are
-most comfortable in (data science, machine learning, computer graphics,
-etc.). The system should solve a problem that can benefit from some form
-of parallelization and can be implemented in the way specified below.
-I recommend reading the entire description before deciding what to implement.
-If you are having trouble coming up with a problem for your system to
-solve then consider the following:
+---
 
--   [Embarrassingly Parallel
-    Topics](https://en.wikipedia.org/wiki/Embarrassingly_parallel)
--   [Parallel
-    Algorithms](https://en.wikipedia.org/wiki/Parallel_computing#Algorithmic_methods)
+## 🌍 Problem & Motivation
 
-You are free to implement any parallel algorithm you like. However, you
-are required to at least have the following features in your parallel
-system:
+Modern photo apps (e.g. iOS Photos) can handle simple queries like *“Barcelona”* or *“credit card”*, but struggle with richer, contextual searches:
 
--   An input/output component that allows the program to read in data or
-    receive data in some way. The system will perform some
-    computation(s) on this input and produce an output result.
+> *“The picture of a fjord I took in Norway in 2018”*  
+> *“The photo of me standing in front of a waterfall, I think it was during my Iceland trip”*
 
--   A sequential implementation of the system. Make sure to provide a
-    usage statement.
+This project explores how to:
+- Parse **free-form user queries** into structured metadata (location, date, camera, description) using an LLM.
+- Efficiently search at the scale of **millions of images**, where a sequential scan would be far too slow.
+- Use **parallelism** (BSP, pipelining, work-stealing) to make this kind of search responsive and scalable.
 
--   Basic Parallel Implementation: An implementation that uses the BSP
-    pattern (using a condition variable to implement the barrier between
-    supersteps), **or** a pipelining pattern (using channels) **or** a
-    map-reduce implementation (again using a condition variable as barrier
-    between the map and the reduce stage). Choose whichever is most suitable
-    for solving the problem you have decided to tackle. The work in each
-    stage or superstep should be divided among threads in a simple fashion.
-    For example, if you choose an image processing problem with N images,
-    then each of your T threads might be assigned to work on approximately
-    N/T images. The easiest and most reasonable way to divide the work will
-    depend on your problem and your chosen parallelization approach.
+Although the current version uses metadata + AI descriptions (from the Unsplash dataset), the architecture is designed to later plug in a **full vision model** that directly inspects image pixels.
 
--   Work-stealing refinement: A work-stealing algorithm using a **dequeue**
-    should be used such that the work can be split into smaller tasks, which
-    are placed in a work queue such that threads will steal work from other threads
-    when idle. You have some freedom in how exactly you want to implement the dequeue;
-    it could either be based on an array as shown in class, where the owner pops items
-    from one end whereas thieves pop items from the other end, or it could be
-    implemented as a conventional dequeue where one end is used for enqueing, and the
-    other end is only used for dequeueing, similar to the CIVL implementation. You can
-    also choose other implementations as long as you justify why they make sense in your
-    report. The one major requirement is that **your data structure is lock-free**.
+---
 
--   Provide a detailed write-up and analysis of your system. For this
-    assignment, this write-up is required to have more detail to explain
-    your parallel implementations since we are not giving you a problem
-    to solve. See the **System Write-up** section for more details.
+## 🧠 High-Level Approach
 
--   Provide all the dataset files you used in your analysis portion of
-    your write up. If these files are too big then you need to provide us
-    a link so we can easily download them from an external source.
-    It is likely that the work-stealing refinement is only beneficial if your
-    input data is structured in a certain way, e.g. if items in the input are of vastly
-    different sizes, or if subtasks in your algorithm have varying or unpredictable costs.
-    Make sure that this is the case for your project, so that you can showcase the pros/cons of all implementations.
+1. **Query Parsing (LLM-assisted)**  
+   - A user types a free-form request (e.g. *“I’m looking for the picture of a fjord I took in Norway in 2018”*).  
+   - A small Python helper (`query_parser.py`) calls an LLM to extract structured metadata into a JSON object:  
+     - `photo_location_country`, `photo_location_city`  
+     - `photo_description`  
+     - `photo_submitted_at` / year  
+     - photographer, camera, etc.
 
--   The grade also include design points. You should think about the
-    modularity of the system you are creating. Think about splitting
-    your code into appropriate packages, when necessary.
+2. **Fast Metadata Filtering (1st pass)**  
+   - Go code in `internal/meta` loads Unsplash-style photo metadata (JSON / JSONL).  
+   - It filters out clearly irrelevant images by matching fields like:
+     - country, city  
+     - year / date  
+     - photographer / camera  
+   - This pass is extremely fast (< 5 ms for thousands of entries).
 
--   **You must provide a script or specific commands that shows/produces
-    the results of your system**. We need to be able to enter in a
-    single command in the terminal window and it will run and produce
-    the results of your system. Failing to provide a straight-forward
-    way of executing your system that produces its result will result in
-    **significant deductions** to your score. We prefer running a simple
-    command line script (e.g., shell-script or python3 script). However,
-    providing a few example cases of possible execution runs will be
-    acceptable.
+3. **Textual Ranking (2nd pass)**  
+   - For the remaining candidates, `internal/textmatch` scores each image using:
+     - tokenization + stemming (Porter)  
+     - stopword removal  
+     - synonym expansion (precomputed GloVe neighbours)  
+   - The score is based on token overlap between the **user query** and the **AI-generated caption** (`ai_description`) for each photo.
 
--   We should also be able to run specific versions of the system. There
-    should be an option (e.g. via command line argument) to run the
-    sequential version, or the various parallel versions. Please make
-    sure to document this in your report or via the printing of a usage
-    statement.
+4. **Parallel Ranking (core of the project)**  
+   The ranking stage is deliberately treated as a heavy “stand-in” for a vision model and is parallelized using three patterns:
+   - **Sequential baseline**: single-threaded `Rank`.
+   - **BSP (Bulk-Synchronous Parallel)**:
+     - Split the photo set into `T` chunks, one per worker.
+     - Each worker maintains a local top-K heap.
+     - A barrier synchronizes workers before a final reduce/merge.
+   - **Pipeline**:
+     - Producer → scoring workers → collector pattern, connected by buffered channels.
+     - Overlaps stages and provides natural load balancing.
+   - **Work-Stealing (WS)**:
+     - Per-worker deques (Chase-Lev style) of tasks.
+     - Idle workers steal work from others.
+     - Designed to handle skewed workloads (e.g. some photos are “heavier” to score).
 
--   You are free to use any additional standard/third-party libraries as
-    you wish. However, all the parallel work is **required** to be
-    implemented by you.
+---
 
--   There is a directory called `proj3` with a single `go.mod` file
-    inside your repositories. Place all your work for project 3 inside
-    this directory.
+## 🏗️ Project Structure
 
-### System Write-up
+Key directories (see `./documentation/project_structure.txt` for full detail):
 
-In prior assignments, we provided you with the input files or data to
-run experiments against a your system and provide an analysis of those
-experiments. For this project, you will do the same with the exception
-that you will produce the data needed for your experiments. In all, you
-should do the following for the writeup:
+- `cmd/`
+  - `finder/` – Main interactive CLI. Flags:
+    - `--mode`: `seq`, `bsp`, `pipeline`, `ws`
+    - `--duplicated N`: synthetic dataset size
+  - `bench/` – Benchmark runner for all modes / thread counts. Outputs CSV into `results/`.
+  - `ranker/` – Standalone ranking tool focused on the token-overlap scorer.
 
--   Run experiments with data you generate for both the sequential and
-    parallel versions. For
-    the parallel version, make sure you are running your experiments
-    with at least producing work for `N` threads, where
-    `N = {2,4,6,8,12}`. Please run final experiments for the report on
-    the Peanut cluster.
--   Produce speedup graph(s) for those data sets. You should have one
-    speedup graph per parallel implementation you define in your system.
+- `internal/`
+  - `meta/` – Load and filter metadata (`loader.go`, `filter.go`).
+  - `query/` – Glue to Python LLM parser; merges query history, manages metadata filters.
+  - `textmatch/` – Tokenization, stemming, synonym expansion, scoring, and top-K heap.
+  - `parallel/`
+    - `bsp/` – Barrier + BSP implementation.
+    - `pipeline/` – Channel-based pipeline scorer.
+    - `ws/` – Work-stealing runtime with lock-free deques.
+  - `util/` – Flags, timers, progress display, error helpers.
 
-Please submit a report (pdf document, text file, etc.) summarizing your
-results from the experiments and the conclusions you draw from them.
-Your report should include your plot(s) as specified above and a
-self-contained report. That is, somebody should be able to read the
-report alone and understand what code you developed, what experiments
-you ran and how the data supports the conclusions you draw. The report
-**must** also include the following:
+- `data/`
+  - `metadata/` – JSON metadata for a 1k image subset.
+  - (Large synthetic metadata and images are **not** in the repo; see “Data & Setup”.)
 
--   Describe your program and the problem it is trying to solve in detail.
--   A description of how you implemented your parallel solutions, and why
-    the approach you picked (BSP, map-reduce, pipelining) is the most appropriate. You probably
-    want to discuss things like load balancing, latency/throughput, etc.
--   Describe the challenges you faced while implementing the system.
-    What aspects of the system might make it difficult to parallelize?
-    In other words, what did you hope to learn by doing this assignment?
--   Did the usage of a task queue with work stealing improve performance?
-    Why or why not?
--   What are the **hotspots** (i.e., places where you can parallelize
-    the algorithm) and **bottlenecks** (i.e., places where there is
-    sequential code that cannot be parallelized) in your sequential
-    program? Were you able to parallelize the hotspots and/or remove the
-    bottlenecks in the parallel version?
--   What limited your speedup? Is it a lack of parallelism?
-    (dependencies) Communication or synchronization overhead? As you try
-    and answer these questions, we strongly prefer that you provide data
-    and measurements to support your conclusions.
--   Compare and contrast the two parallel implementations. Are there
-    differences in their speedups?
+- `scripts/`
+  - `get_image_sample.py` – Download a sample of Unsplash images + metadata.
+  - `dup/dup.go` – Duplicate metadata to simulate up to 25M image entries.
+  - `run_all.sh` – Run benchmarks across modes and thread counts.
+  - `plot_speedup.py` – Generate speedup charts from CSV results into `plots/`.
 
-## Don't know What to Implement?
+---
 
-If you are unsure what to implement then by default you can reimplement
-the image processing assignment using the required new features.
+## 📊 Performance & Parallelism
 
-**You cannot reimplement project 2 or other assignments**.
+The project evaluates how different parallel patterns scale on synthetic datasets up to **tens of millions** of entries (simulating a large photo library or a production-scale CV inference pipeline):
 
-## Design, Style and Cleaning up
+- **Dataset sizes**: 100K, 1M, 25M (configurable via `--duplicated N`).
+- **Modes**: `seq`, `bsp`, `pipeline`, `ws`.
+- **Metrics**: ranking time only (filtering and LLM parsing excluded).
 
-Before you submit your final solution, you should, remove
+Key observations (example behaviour on large datasets):
 
--   any `Printf` statements that you added for debugging purposes and
--   all in-line comments of the form: "YOUR CODE HERE" and "TODO ..."
--   Think about your function decomposition. No code duplication. This
-    homework assignment is relatively small so this shouldn't be a major
-    problem but could be in certain problems.
+- All parallel modes achieve substantial speedups vs. the sequential baseline.
+- BSP is simple and performs well up to ~8 threads before barrier costs show.
+- Pipeline slightly underperforms at low thread counts (channel overhead), but scales nicely when stages overlap.
+- Work-Stealing provides the best robustness when scoring costs are non-uniform, achieving around ~8× speedup at higher thread counts in the experiments.
 
-Go does not have a strict style guide. However, use your best judgment
-from prior programming experience about style. Did you use good variable
-names? Do you have any lines that are too long, etc.
+The overarching takeaway: **parallelizing the ranking kernel is essential** once you reach millions of images, and the choice of concurrency pattern matters for load balance and overheads.
 
-As you clean up, you should periodically save your file and run your
-code through the tests to make sure that you have not broken it in the
-process.
+---
 
-## Grading
+## 🛠️ Installation & Setup (Short Version)
 
-For this project, we grade as follows:
- - 50% Completeness. Your code should implement the required features without deadlocks or race conditions.
- - 20% Performance. Does your code scale, did you avoid unnecessary data copies, did you make an effort to remove obvious performance bottlenecks.
- - 20% Writeup. Is the report detailed, reasonably well written, and contains all the parts we asked for.
- - 10% Design and Style.
+Detailed instructions live in `./documentation/run.txt`. High-level steps:
 
-## Submission
+1. **Prerequisites**
+   - Go ≥ 1.19  
+   - Python 3.x  
+   - Python packages (see `requirements.txt` in the repo root):  
+     `openai`, `pandas`, `matplotlib`, `seaborn`, `numpy`
+   - Set your OpenAI API key as an environment variable:
+     ```bash
+     export OPENAI_API_KEY="your-key-here"
+     ```
+     (On Windows PowerShell: `$env:OPENAI_API_KEY="your-key-here"`)
 
-Before submitting, make sure you've added, committed, and pushed all
-your code to GitHub. You must submit your final work through Gradescope
-(linked from our Canvas site) in the "Project \#3" assignment page via
-two ways,
+2. **Data**
+   - Download a small sample of images + metadata:
+     ```bash
+     cd proj3/scripts
+     python get_image_sample.py N   # e.g. N = 100 or 1000
+     ```
+   - Optionally generate large synthetic metadata:
+     ```bash
+     cd proj3/scripts/dup
+     go run dup.go 25000000    # simulate 25M entries
+     ```
 
-1.  **Uploading from Github directly (recommended way)**: You can link
-    your Github account to your Gradescope account and upload the
-    correct repository based on the homework assignment. When you submit
-    your homework, a pop window will appear. Click on "Github" and then
-    "Connect to Github" to connect your Github account to Gradescope.
-    Once you connect (you will only need to do this once), then you can
-    select the repsotiory you wish to upload and the branch (which
-    should always be "main" or "master") for this course.
-2.  **Uploading via a Zip file**: You can also upload a zip file of the
-    homework directory. Please make sure you upload the entire directory
-    and keep the initial structure the **same** as the starter code;
-    otherwise, you run the risk of not passing the automated tests.
+---
 
-As a reminder, for this assignment, there will be **no autograder** on
-Gradescope. We will run the program the CS Peanut cluster and manually
-enter in the grading into Gradescope. However, you **must still submit
-your final commit to Gradescope**.
+## 🚀 Future Directions
 
+While this version uses metadata + AI descriptions as a proxy for visual understanding, the design intentionally isolates the scoring kernel so it can be replaced by a real vision model:
+    - Swap the token-overlap scorer for a multimodal model (e.g. “Does this image match the user’s description?” per image).
+    - Reuse the same parallel runtime (BSP, pipeline, work-stealing) to keep latencies reasonable, even when each image requires a heavy CV inference.
+    - Extend filters to integrate EXIF data, face recognition, and richer contextual cues.
+
+This codebase is therefore both:
+    - A practical prototype for AI-assisted photo search, and
+    - A parallel systems case study in designing and benchmarking concurrent architectures on realistic, data-heavy workloads.
